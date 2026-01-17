@@ -1,255 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>勤務表 (Web)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#173a8f">
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js");
-    }
-  </script>
-<style>
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}
-header{background:#173a8f;color:white;padding:14px;font-size:22px;font-weight:bold;}
+  <meta charset="UTF-8" />
 
-.group-bar{display:flex;gap:8px;padding:10px;background:#f2f2f2;}
-.group-btn{padding:6px 12px;border-radius:6px;background:#ddd;cursor:pointer;font-weight:bold;}
-.group-btn.active{background:#173a8f;color:white;}
+  <!-- PWA基本 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="勤務表" />
 
-.list{padding:10px;}
-.row{
-  padding:14px;
-  border-bottom:1px solid #ccc;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
+  <!-- アイコン -->
+  <link rel="apple-touch-icon" href="icon-192.png" />
 
-.left{cursor:pointer;}
-.right{
-  width:40%;
-  text-align:left;
-  color:#1565c0;
-  font-weight:bold;
-  cursor:pointer;
-}
+  <!-- manifest -->
+  <link rel="manifest" href="manifest.json" />
 
-.code-work{color:#000;font-weight:bold;}
-.code-holiday{color:#c62828;font-weight:bold;}
-.code-off{color:#777;font-weight:bold;}
-
-#overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.5);
-  display:none;align-items:center;justify-content:center;
-}
-#modal{
-  background:white;width:92%;max-width:420px;
-  padding:16px;border-radius:10px;
-}
-
-.section{margin-bottom:14px;}
-.section-title{font-size:13px;color:#666;margin-bottom:6px;}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-
-.btn{padding:12px;border-radius:8px;text-align:center;font-weight:bold;cursor:pointer;}
-.work{background:#173a8f;color:white;}
-.holiday{background:#c62828;color:white;}
-.other{background:#2e7d32;color:white;}
-
-.close{text-align:right;}
-</style>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1e3a8a">
-<link rel="apple-touch-icon" href="icon-192.png">
+  <title>勤務表</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <div id="app"></div>
 
-<header>勤務表 (Web)</header>
-
-<div class="group-bar" id="groupBar"></div>
-<div class="list" id="list"></div>
-
-<div id="overlay">
-  <div id="modal">
-    <div id="modalTitle" style="font-weight:bold;margin-bottom:10px;"></div>
-
-    <div class="section">
-      <div class="section-title">勤務</div>
-      <div class="grid" id="workGrid"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">休日</div>
-      <div class="grid" id="holidayGrid"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">その他</div>
-      <div class="grid" id="otherGrid"></div>
-    </div>
-
-    <div class="close">
-      <button onclick="closeModal()">閉じる</button>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ===== 基本 ===== */
-const DAYS=31;
-const STORAGE="shiftData";
-
-const groups=["A1","A2","B1","B2","B3"];
-let selectedGroup="A2";
-
-const overnightCodes=["C112","C113","C114"];
-
-const workCodes={
-  A1:["C101","C102","C103"],
-  A2:["C111","C112","C113","C114"],
-  B1:["C221","C222"],
-  B2:["C231","C232"],
-  B3:["C241","C242"]
-};
-
-const holidayCodes=["公休","年休","特休"];
-const offCodes=["非番"];
-const otherCodes=["臨時"];
-
-const eventPresets=["訓練会","指導","見習"];
-
-let rows=[];
-let selectedIndex=null;
-
-/* ===== 保存 ===== */
-function load(){
-  const s=localStorage.getItem(STORAGE);
-  if(s) rows=JSON.parse(s);
-  else for(let i=1;i<=DAYS;i++) rows.push({date:`1/${i}`,code:"",event:""});
-}
-function save(){localStorage.setItem(STORAGE,JSON.stringify(rows));}
-
-/* ===== グループ ===== */
-const groupBar=document.getElementById("groupBar");
-groups.forEach(g=>{
-  const b=document.createElement("div");
-  b.textContent=g;
-  b.className="group-btn"+(g===selectedGroup?" active":"");
-  b.onclick=()=>{selectedGroup=g;updateGroups();}
-  groupBar.appendChild(b);
-});
-function updateGroups(){
-  document.querySelectorAll(".group-btn").forEach(b=>{
-    b.classList.toggle("active",b.textContent===selectedGroup);
-  });
-}
-
-/* ===== 表示 ===== */
-const list=document.getElementById("list");
-function render(){
-  list.innerHTML="";
-  rows.forEach((r,i)=>{
-    const row=document.createElement("div");
-    row.className="row";
-
-    let cls="code-work";
-    if(holidayCodes.includes(r.code)) cls="code-holiday";
-    if(offCodes.includes(r.code)) cls="code-off";
-
-    const left=document.createElement("div");
-    left.className="left";
-    left.innerHTML=`${r.date} <span class="${cls}">${r.code||"未入力"}</span>`;
-    left.onclick=()=>openModal(i);
-
-    const right=document.createElement("div");
-    right.className="right";
-    right.textContent=r.event||"＋";
-    right.ondblclick=()=>editEvent(i);
-
-    row.appendChild(left);
-    row.appendChild(right);
-    list.appendChild(row);
-  });
-}
-
-/* ===== イベント編集 ===== */
-function editEvent(i){
-  const current=rows[i].event||"";
-  let msg="イベントを入力\n\n";
-  eventPresets.forEach(e=>msg+=`・${e}\n`);
-  const v=prompt(msg,current);
-  if(v!==null){
-    rows[i].event=v;
-    save();
-    render();
-  }
-}
-
-/* ===== モーダル ===== */
-const overlay=document.getElementById("overlay");
-const title=document.getElementById("modalTitle");
-
-function openModal(i){
-  selectedIndex=i;
-  title.textContent=rows[i].date;
-  fillGrids();
-  overlay.style.display="flex";
-}
-function closeModal(){
-  overlay.style.display="none";
-  selectedIndex=null;
-}
-
-/* ===== 勤務選択 ===== */
-function select(code){
-  rows[selectedIndex].code=code;
-  let nextIndex=selectedIndex+1;
-
-  if(overnightCodes.includes(code) && nextIndex<rows.length){
-    rows[nextIndex].code="非番";
-    nextIndex++;
-  }
-
-  save();
-  render();
-  closeModal();
-
-  if(nextIndex<rows.length){
-    setTimeout(()=>openModal(nextIndex),150);
-  }
-}
-
-/* ===== グリッド ===== */
-function fillGrids(){
-  fill("workGrid",workCodes[selectedGroup],"work");
-  fill("holidayGrid",holidayCodes,"holiday");
-  fill("otherGrid",offCodes.concat(otherCodes),"other");
-}
-function fill(id,codes,cls){
-  const g=document.getElementById(id);
-  g.innerHTML="";
-  codes.forEach(c=>{
-    const b=document.createElement("div");
-    b.className=`btn ${cls}`;
-    b.textContent=c;
-    b.onclick=()=>select(c);
-    g.appendChild(b);
-  });
-}
-
-/* ===== 初期化 ===== */
-load();
-render();
-
-</script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
-}
-</script>
+  <script src="app.js"></script>
 </body>
 </html>
