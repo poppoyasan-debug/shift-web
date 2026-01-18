@@ -1,52 +1,76 @@
 body {
-  font-family: system-ui, sans-serif;
   margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f2f2f7;
 }
 
 header {
-  background: #1f4bd8;
+  background: #1f3c88;
   color: white;
   padding: 12px;
+  text-align: center;
+  font-weight: bold;
 }
 
-select {
-  font-size: 16px;
-}
-
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-li {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-  cursor: pointer;
-}
-
-.hidden {
-  display: none;
-}
-
-#modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
+#groups {
   display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-content {
-  background: white;
-  padding: 16px;
-  width: 90%;
-  max-width: 400px;
-  border-radius: 8px;
-}
-
-#codeButtons button {
-  margin: 4px;
+  gap: 6px;
   padding: 10px;
+  justify-content: center;
+}
+
+#groups button {
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: none;
+  background: #ddd;
+}
+
+#groups button.active {
+  background: #1f3c88;
+  color: white;
+}
+
+#days {
+  padding: 10px;
+}
+
+.day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  margin-bottom: 8px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.day-row button {
+  border: none;
+  background: #e0e0e0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+}
+
+/* 🔥 ここが最重要 */
+#picker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 9999;   /* ← これ */
+  border-top: 1px solid #ccc;
+}
+
+#picker button {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: none;
+  background: #e6e6e6;
 }
